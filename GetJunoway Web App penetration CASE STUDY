@@ -1,152 +1,113 @@
-# Black\-Box Web Application Penetration Test
+Black-Box Web Application Penetration Test
 
-**Engagement:** GetJunoway Web Application
-**Assessment:** Black\-Box Web Application Penetration Test
-**Status:** In Progress
-**Environment:** Kali Linux
-**Focus:** External attack surface, authentication, and access control
+Engagement: GetJunoway Web Application
+Assessment: Authorized Black-Box Web Application Penetration Test
+Status: In Progress — approximately 45% complete
+Environment: Kali Linux / Firefox
+Focus: External attack surface, authentication, access control, security configuration, and public input handling
 
----
+────────
 
-## Executive Summary
+Executive Summary
 
-This case study documents an authorized black\-box security assessment of
-the GetJunoway web application\. The engagement is being conducted from
-the perspective of an external attacker without source\-code access or
-pre\-established application credentials\.
+This case study documents an authorized black-box security assessment of the GetJunoway web application. Testing is being conducted from the perspective of an external attacker without source-code access and, for the current phase, without a functioning authenticated user account.
 
-The initial assessment phase focused on reconnaissance, authentication
-architecture, route discovery, and unauthenticated access\-control
-validation\. Testing identified a Next\.js application using Supabase for
-authentication and discovered an administrative route at `/admin`\.
+Assessment activity to date has covered public reconnaissance, technology identification, authentication-flow analysis, administrative-route validation, HTTP method behavior, security-header configuration, CORS behavior, error handling, client-side exposure, and public search-input handling.
 
-Direct unauthenticated requests to the administrative route were
-analyzed to determine whether protected content could be accessed
-without a valid session\. Although the route was externally discoverable
-and initially returned application content, further response analysis
-identified Next\.js redirect behavior directing unauthenticated users to
-`/login?next=/admin`\.
+The application was identified as a Next.js application with Supabase involved in authentication. An administrative route at /admin was discovered and validated. Although unauthenticated requests can reach the route and may receive an HTTP 200 response at the framework level, Next.js response data contains an application redirect to /login?next=/admin. No unauthorized administrative access has been demonstrated.
 
-At the current stage of the engagement, no administrative authentication
-bypass has been confirmed\.
+One security-hardening issue has been identified: the tested public response did not include a Content-Security-Policy header. Framework fingerprinting through X-Powered-By: Next.js was also observed as an informational exposure.
 
----
+Public search functionality was tested for reflection, basic HTML injection behavior, special-character handling, malformed input, and unexpected parameter handling. No reflected XSS, HTML injection, database error disclosure, or privilege change was demonstrated in the tested cases.
 
-## Scope & Assessment Approach
+Authenticated authorization testing remains pending because account creation/login is not currently available in the tested build.
 
-The application was assessed externally using black\-box methodology\.
-Testing performed to date has included:
+────────
 
-- Public application reconnaissance
-- Technology identification
-- Authentication\-flow analysis
-- HTTP request and response inspection
-- Route discovery
-- Administrative endpoint validation
-- Unauthenticated access\-control testing
-- Browser and command\-line traffic analysis
+Scope & Assessment Approach
 
-The engagement remains in progress, and this case study will be updated
-as additional attack surfaces are assessed\.
+The application is being assessed externally using a black-box methodology. Testing performed to date includes:
 
----
+• Public application reconnaissance
+• Technology and framework identification
+• Authentication-flow analysis
+• HTTP request/response inspection
+• Administrative route discovery
+• Unauthenticated access-control validation
+• HTTP method handling
+• Security-header review
+• CORS behavior testing
+• Error-handling and information-disclosure testing
+• Public JavaScript/client-side exposure review
+• Search parameter and input-handling testing
+• Browser and command-line traffic analysis
 
-## Tooling
+Testing emphasizes reproducibility, minimal impact, evidence collection, and validation of actual security impact before assigning a vulnerability.
 
----
+────────
 
-Tool                                Use During Assessment
+Tooling
 
----
+|Tool                     |Use During Assessment                          |
+|-------------------------|-----------------------------------------------|
+|Kali Linux               |Primary penetration-testing environment        |
+|Firefox / Developer Tools|Browser behavior and request-flow inspection   |
+|`curl`                   |Direct HTTP interaction and response collection|
+|`grep`                   |Response, HTML, and JavaScript analysis        |
+|Standard Linux utilities |Local evidence and response inspection         |
 
-Kali Linux                          Primary penetration\-testing
-environment
+────────
 
-Firefox Developer Tools             Request/response and
-authentication\-flow inspection
+Application Architecture Identified
 
-`curl`                              Direct HTTP interaction and
-response collection
+Web Framework
 
-## `grep`                              Response analysis and route/keyword discovery
+Response metadata and client-side application content identified Next.js.
 
----
-
-## Application Architecture Identified
-
-Reconnaissance identified several components relevant to the
-application’s attack surface\.
-
-### Frontend / Web Framework
-
-Response metadata and application content identified **Next\.js** as the
-web framework\.
-
-### Authentication Provider
-
-Authentication traffic identified **Supabase** as part of the
-application’s authentication infrastructure\.
-
-Observed authentication traffic followed the general structure:
+Observed response header:
 
 ```text
-https://<project>.supabase.co/auth/v1/token
+X-Powered-By: Next.js
 ```
 
-with password\-based authentication\.
+Authentication Architecture
 
-These observations established the application’s authentication
-architecture and informed subsequent access\-control testing\.
+Earlier authentication-flow inspection identified Supabase as part of the authentication infrastructure, with password-based authentication behavior.
 
----
+Invalid credentials produced a consistent authentication rejection rather than an authentication bypass.
 
-# Assessment Activity
+Edge / Hosting Components
 
-## Phase 1 — Public Application Reconnaissance
+Responses also showed infrastructure associated with Cloudflare and Vercel/Next.js request handling. These observations are used for attack-surface understanding and are not treated as vulnerabilities by themselves.
 
-Public application responses were collected outside the browser for
-analysis\.
+────────
 
-```bash
-curl -sL https://TARGET/login -o login.html
-```
+Assessment Activity
 
-Returned application content was searched for authentication and
-API\-related references:
+Phase 1 — Public Application Reconnaissance
 
-```bash
-grep -Eio '/api/[^" ]+|/auth/[^" ]+' login.html | sort -u
-```
+Public application responses were collected and inspected using browser tools and command-line HTTP requests.
 
-This provided an initial view of routes and application components
-exposed to an unauthenticated client\.
+Reconnaissance identified:
 
-### Result
+• Next.js framework behavior
+• Authentication-related application functionality
+• /admin administrative route
+• /login authentication route
+• Public search functionality using /search?q=...
+• Publicly delivered Next.js JavaScript chunks
 
-The application exposed sufficient client\-side information to identify
-its general framework and authentication architecture\. No vulnerability
-was assigned solely on the basis of technology or route disclosure\.
+Technology and route discovery were treated as reconnaissance observations only. No vulnerability was assigned solely because a technology or sensitive route was discoverable.
 
----
+Result: Completed for the current assessment stage.
 
-## Phase 2 — Authentication Flow Analysis
+────────
 
-The login process was inspected through the browser’s Network panel\.
+Phase 2 — Authentication Flow Analysis
 
-Authentication submissions generated requests containing the expected
-email and password fields\.
+Authentication behavior was previously inspected using browser network traffic.
 
-Sanitized request structure:
-
-```json
-{
-  "email": "test@example.com",
-  "password": "<redacted>"
-}
-```
-
-Invalid credentials resulted in an HTTP `400` response containing an
-authentication error equivalent to:
+Invalid credentials produced a consistent rejection equivalent to:
 
 ```json
 {
@@ -155,198 +116,372 @@ authentication error equivalent to:
 }
 ```
 
-Additional invalid test credentials produced the same general response
-behavior\.
+A password-recovery workflow was not available in the tested build.
 
-### Assessment Result
+At the current stage, login/account creation is unavailable, preventing further authenticated session and account-boundary testing.
 
-No authentication bypass was identified during this phase\.
+Result: Partial. No authentication bypass demonstrated. Authenticated testing remains pending.
 
-A password\-recovery workflow was not implemented in the tested version
-of the application and was therefore excluded from the current
-authentication testing\.
+────────
 
----
+Phase 3 — Administrative Route Discovery & Validation
 
-## Phase 3 — Administrative Route Discovery
-
-Reconnaissance identified the following administrative route:
+The following administrative route was identified:
 
 ```text
 /admin
 ```
 
-Direct browser navigation to this location did not display the
-administrative interface\. Instead, the application presented its
-authentication page while retaining the requested administrative
-destination:
+Direct unauthenticated requests were examined independently of browser rendering.
 
-```text
-/login?next=/admin
-```
-
-The route was then examined independently from the browser\.
-
-```bash
-curl -sS -i https://TARGET/admin
-```
-
-The returned application content was saved for additional analysis:
+Example:
 
 ```bash
 curl -s https://TARGET/admin -o /tmp/admin.html
 ```
 
-Relevant terms were extracted from the response:
-
-```bash
-grep -Eio 'dashboard|users|orders|payments|admin|login|sign.?in' /tmp/admin.html | sort -u
-```
-
-Observed terms included references to the administrative and login
-routes\.
-
----
-
-## Phase 4 — Unauthenticated Administrative Access Validation
-
-The `/admin` response required additional analysis because receiving
-application content alone did not establish whether protected
-functionality was exposed\.
-
-Inspection of the returned Next\.js data identified redirect behavior
-containing:
+Analysis of the returned Next.js data identified:
 
 ```text
-NEXT_REDIRECT
-/login?next=/admin
-307
+NEXT_REDIRECT;replace;/login?next=/admin;307;
 ```
 
-This demonstrated that an unauthenticated request was being routed into
-the authentication workflow rather than being granted access to the
-protected administrative interface\.
+This showed that unauthenticated access is routed into the authentication workflow rather than being granted access to the administrative interface.
 
-### Validation Result
+Validation Result
 
-Control Tested                                               Result
+|Control Tested                                            |Result|
+|----------------------------------------------------------|------|
+|Administrative route externally discoverable              |Yes   |
+|`/admin` reachable without an existing session            |Yes   |
+|Administrative interface accessible without authentication|No    |
+|Unauthenticated request routed to login                   |Yes   |
+|Administrative authentication bypass confirmed            |No    |
 
----
+Security disposition: No vulnerability issued for administrative-route exposure.
 
-Administrative route externally discoverable                 Yes
-`/admin` reachable without an existing session               Yes
-Administrative interface accessible without authentication   No
-Unauthenticated request redirected to login                  Yes
-Administrative authentication bypass confirmed               No
+────────
 
-### Security Disposition
+Phase 4 — HTTP Method Handling
 
-**No finding issued\.**
+The /admin route was tested with multiple HTTP methods:
 
-The administrative route was discoverable, but testing did not
-demonstrate unauthorized access to administrative functionality or
-protected content\.
+```text
+GET
+HEAD
+POST
+PUT
+PATCH
+DELETE
+OPTIONS
+```
 
----
+All tested methods produced an HTTP 200 response at the application/framework level. However, testing did not demonstrate that alternate methods bypassed the authentication workflow or exposed protected administrative functionality.
 
-# Findings Status
+This behavior is noteworthy because unsupported methods are commonly rejected explicitly, but status-code behavior alone does not establish a security vulnerability.
 
-## Confirmed Security Findings
+TRACE Validation
 
-**No confirmed vulnerabilities at the current stage of testing\.**
+TRACE was separately tested:
 
-This status reflects the evidence collected so far and may change as the
-assessment progresses\.
+```bash
+curl -i -X TRACE https://TARGET/
+```
 
-## Attack Surface Observations
+Result:
 
----
+```text
+HTTP/2 405
+405 Not Allowed
+```
 
-Observation                         Assessment Relevance
+TRACE was rejected and the request was not reflected.
 
----
+Result: No HTTP method-based authentication bypass demonstrated. TRACE protection passed.
 
-Next\.js identified                  Establishes framework for further
-testing
+────────
 
-Supabase authentication identified  Establishes authentication
-architecture
+Phase 5 — Security Configuration Review
 
-`/admin` route identified           Provides administrative
-access\-control test target
+Security Headers Observed
 
-Invalid credentials rejected        Authentication control functioning
-in tested cases
+The tested public response included protections such as:
 
-`/admin` redirects unauthenticated  Page\-level authentication control
-requests                            functioning
+```text
+Strict-Transport-Security: max-age=63072000
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+```
 
-## Password recovery unavailable       Not testable in current application build
+Missing Content-Security-Policy
 
----
+A direct header check was performed:
 
-# Evidence Summary
+```bash
+curl -sI https://TARGET | grep -i content-security-policy
+```
+
+No Content-Security-Policy header was returned in the tested response.
+
+This does not demonstrate XSS by itself. CSP is a defense-in-depth browser control that can reduce the impact of certain content-injection vulnerabilities.
+
+Framework Disclosure
+
+The response exposed:
+
+```text
+X-Powered-By: Next.js
+```
+
+This provides minor technology fingerprinting information. No direct security impact has been demonstrated from the disclosure.
+
+────────
+
+Phase 6 — CORS Validation
+
+A request containing an arbitrary external Origin header was sent:
+
+```bash
+curl -sI -H "Origin: https://evil.example" https://TARGET
+```
+
+The tested response did not reflect the supplied origin through Access-Control-Allow-Origin and did not expose an Access-Control-Allow-Credentials configuration that would indicate an obvious permissive CORS issue.
+
+Result: No obvious arbitrary-origin CORS misconfiguration demonstrated on the tested endpoint.
+
+────────
+
+Phase 7 — Error Handling & Information Disclosure
+
+A deliberately nonexistent route was requested to evaluate error handling.
+
+The application returned:
+
+```text
+HTTP/2 404
+X-Matched-Path: /_not-found
+```
+
+No visible stack trace, filesystem path, database exception, environment variable, source-code exception, or sensitive debugging information was observed.
+
+Result: Error handling passed the tested information-disclosure check.
+
+────────
+
+Phase 8 — Client-Side Exposure Review
+
+The login page was inspected for obvious API paths and public environment-variable names. Referenced Next.js JavaScript chunks were also identified and a representative chunk was downloaded for local inspection.
+
+Testing did not identify obvious:
+
+• /api/ endpoint disclosure in the inspected login HTML
+• NEXT_PUBLIC_* variable names in the inspected page
+• Authentication/backend URLs in the representative JavaScript chunk
+• Supabase/Firebase/auth strings of security significance in that chunk
+
+This was a limited client-side review and does not establish that no client-side endpoints or configuration exist elsewhere in the application.
+
+Result: No obvious client-exposed secret or sensitive configuration identified in the tested material.
+
+────────
+
+Phase 9 — Public Search Input Testing
+
+The public search feature uses a URL-controlled parameter:
+
+```text
+/search?q=test
+```
+
+Reflection Baseline
+
+A unique marker was supplied:
+
+```text
+JUNO12345
+```
+
+The value was reflected in the search interface and results heading.
+
+Reflection was confirmed, but reflection alone is not a vulnerability.
+
+Basic HTML Injection Check
+
+The following harmless markup was supplied:
+
+```html
+<b>JUNO12345</b>
+```
+
+The application displayed the markup literally rather than rendering JUNO12345 as injected HTML.
+
+Result: Basic HTML injection not demonstrated.
+
+Special-Character Handling
+
+A string containing quotes, angle brackets, and an ampersand was submitted.
+
+The characters remained visible as search text and did not visibly alter the page structure.
+
+Result: No context breakout demonstrated in the tested reflection.
+
+Malformed Input / Error Handling
+
+A single quote was submitted as search input to check for obvious backend error leakage.
+
+The application handled the input without exposing a visible SQL/database error, stack trace, or abnormal error page.
+
+Result: No database-error disclosure demonstrated. This test alone does not establish immunity to injection.
+
+Unexpected Parameter Handling
+
+The following additional parameter was supplied:
+
+```text
+/search?q=test&admin=true
+```
+
+The application continued to behave as a normal search for test. No administrative interface, privileged data, error, or observable privilege change resulted.
+
+Result: Unexpected parameter ignored in the tested case.
+
+Search Security Disposition
+
+Testing has not demonstrated:
+
+• Reflected XSS
+• Basic HTML injection
+• Database error disclosure
+• Privilege escalation through an unexpected URL parameter
+
+Search testing is considered complete for this stage unless new behavior or attack surface is identified later.
+
+────────
+
+Findings Status
+
+Finding 01 — Missing Content-Security-Policy Header
+
+Severity: Low / Security Hardening
+Affected Component: Public web responses
+Status: Confirmed configuration observation
+
+Description
+
+The tested public response did not include a Content-Security-Policy HTTP response header.
+
+Security Impact
+
+The absence of CSP does not create an XSS vulnerability by itself. However, CSP provides defense in depth by restricting the sources and execution contexts available to browser content. If a separate content-injection vulnerability were introduced, the absence of an effective CSP could increase its potential impact.
+
+Reproduction
+
+```bash
+curl -sI https://TARGET | grep -i content-security-policy
+```
+
+No header was returned.
+
+Recommendation
+
+Implement and test an application-specific Content Security Policy. Begin with a policy compatible with the application’s required scripts, styles, images, connections, frames, and other resources, then progressively tighten it. Avoid deploying an overly broad policy solely to satisfy the presence of the header.
+
+────────
+
+Informational Observation — Framework Fingerprinting
+
+Severity: Informational
+
+Responses disclose:
+
+```text
+X-Powered-By: Next.js
+```
+
+Removing unnecessary framework-identification headers can slightly reduce passive technology fingerprinting, although this should not be treated as a substitute for patching or secure application design.
+
+────────
+
+Controls That Passed Current Testing
+
+|Test Area                        |Result                                          |
+|---------------------------------|------------------------------------------------|
+|Unauthenticated `/admin` access  |Protected by login workflow                     |
+|Administrative auth bypass       |Not demonstrated                                |
+|TRACE method                     |Rejected with `405`                             |
+|Arbitrary-origin CORS            |No obvious permissive behavior                  |
+|404 error handling               |No sensitive debug leakage observed             |
+|Basic search HTML injection      |Not demonstrated                                |
+|Search special-character handling|No context breakout observed                    |
+|Search malformed input           |No database error leakage observed              |
+|`admin=true` URL parameter       |No privilege change observed                    |
+|Client-side secret/config review |No obvious sensitive exposure in tested material|
+
+────────
+
+Evidence Summary
 
 Evidence collected during the assessment includes:
 
-- Login\-page network traffic
-- Invalid authentication responses
-- Supabase authentication request behavior
-- `/admin` browser behavior
-- Direct `/admin` HTTP responses
-- Next\.js redirect data
-- Command\-line response analysis
+• Authentication-flow screenshots
+• Invalid authentication responses
+• /admin browser behavior
+• Direct /admin HTTP responses
+• Next.js NEXT_REDIRECT behavior
+• HTTP method test results
+• TRACE 405 Not Allowed response
+• Security-header output
+• CSP absence verification
+• CORS test response
+• 404/error-handling response
+• Client-side JavaScript inspection
+• Search reflection and input-handling screenshots
 
-Sensitive values such as passwords, authentication tokens, session
-identifiers, and secrets should be redacted before evidence is published
-in a public portfolio repository\.
+Before public publication, passwords, authentication tokens, session identifiers, API secrets, private keys, personal information, and sensitive production data should be removed or redacted.
 
-A recommended repository structure is:
+Suggested repository structure:
 
 ```text
 getjunoway-pentest/
 ├── README.md
 ├── CASE_STUDY.md
 ├── evidence/
+│   ├── reconnaissance/
 │   ├── authentication/
-│   └── access-control/
+│   ├── access-control/
+│   ├── configuration/
+│   └── input-testing/
 └── findings/
 ```
 
----
+────────
 
-# Next Assessment Phase
+Next Assessment Phase
 
-Testing will continue beyond page\-level authentication controls to
-evaluate whether authorization is enforced by the underlying server\-side
-functionality\.
+The next phase will continue public application/input testing, moving from the completed search review to other functional user-controlled surfaces such as the contact workflow and other public application features.
 
-The next assessment phase will focus on:
+Once account creation/login becomes available, the assessment will return to the authenticated attack surface for:
 
-- Session handling
-- Backend/API authorization
-- Authenticated versus unauthenticated resource access
-- Administrative functionality boundaries
-- Application route exposure
-- Input handling
-- Security configuration
-- Additional attack\-surface discovery
+• Session-management testing
+• Horizontal authorization / user-to-user isolation
+• IDOR/BOLA testing using controlled accounts
+• Backend/API authorization
+• Administrative authorization boundaries
+• Authenticated versus unauthenticated resource access
+• Business-logic testing
 
-Any confirmed vulnerability will be documented with reproduction
-evidence, impact analysis, severity, and remediation guidance\.
+Any additional finding will be documented only after security impact is reproduced and validated.
 
----
+────────
 
-# Current Engagement Status
+Current Engagement Status
 
-The first assessment phase established the application’s authentication
-architecture and validated unauthenticated behavior of the discovered
-administrative route\.
+The assessment has progressed from reconnaissance into application-level security testing.
 
-The application currently prevents the tested unauthenticated request
-from reaching the `/admin` interface and redirects the request into the
-login workflow\.
-
-**Current confirmed vulnerabilities: 0**
-
-**Assessment status: In progress**
+Estimated overall completion: ~45%
+Confirmed security-hardening findings: 1
+Informational observations: Framework fingerprinting
+Confirmed administrative authentication bypasses: 0
+Assessment status: In Progress
