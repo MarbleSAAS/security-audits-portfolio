@@ -1,0 +1,352 @@
+# Black\-Box Web Application Penetration Test
+
+**Engagement:** GetJunoway Web Application
+**Assessment:** Black\-Box Web Application Penetration Test
+**Status:** In Progress
+**Environment:** Kali Linux
+**Focus:** External attack surface, authentication, and access control
+
+---
+
+## Executive Summary
+
+This case study documents an authorized black\-box security assessment of
+the GetJunoway web application\. The engagement is being conducted from
+the perspective of an external attacker without source\-code access or
+pre\-established application credentials\.
+
+The initial assessment phase focused on reconnaissance, authentication
+architecture, route discovery, and unauthenticated access\-control
+validation\. Testing identified a Next\.js application using Supabase for
+authentication and discovered an administrative route at `/admin`\.
+
+Direct unauthenticated requests to the administrative route were
+analyzed to determine whether protected content could be accessed
+without a valid session\. Although the route was externally discoverable
+and initially returned application content, further response analysis
+identified Next\.js redirect behavior directing unauthenticated users to
+`/login?next=/admin`\.
+
+At the current stage of the engagement, no administrative authentication
+bypass has been confirmed\.
+
+---
+
+## Scope & Assessment Approach
+
+The application was assessed externally using black\-box methodology\.
+Testing performed to date has included:
+
+- Public application reconnaissance
+- Technology identification
+- Authentication\-flow analysis
+- HTTP request and response inspection
+- Route discovery
+- Administrative endpoint validation
+- Unauthenticated access\-control testing
+- Browser and command\-line traffic analysis
+
+The engagement remains in progress, and this case study will be updated
+as additional attack surfaces are assessed\.
+
+---
+
+## Tooling
+
+---
+
+Tool                                Use During Assessment
+
+---
+
+Kali Linux                          Primary penetration\-testing
+environment
+
+Firefox Developer Tools             Request/response and
+authentication\-flow inspection
+
+`curl`                              Direct HTTP interaction and
+response collection
+
+## `grep`                              Response analysis and route/keyword discovery
+
+---
+
+## Application Architecture Identified
+
+Reconnaissance identified several components relevant to the
+application’s attack surface\.
+
+### Frontend / Web Framework
+
+Response metadata and application content identified **Next\.js** as the
+web framework\.
+
+### Authentication Provider
+
+Authentication traffic identified **Supabase** as part of the
+application’s authentication infrastructure\.
+
+Observed authentication traffic followed the general structure:
+
+```text
+https://<project>.supabase.co/auth/v1/token
+```
+
+with password\-based authentication\.
+
+These observations established the application’s authentication
+architecture and informed subsequent access\-control testing\.
+
+---
+
+# Assessment Activity
+
+## Phase 1 — Public Application Reconnaissance
+
+Public application responses were collected outside the browser for
+analysis\.
+
+```bash
+curl -sL https://TARGET/login -o login.html
+```
+
+Returned application content was searched for authentication and
+API\-related references:
+
+```bash
+grep -Eio '/api/[^" ]+|/auth/[^" ]+' login.html | sort -u
+```
+
+This provided an initial view of routes and application components
+exposed to an unauthenticated client\.
+
+### Result
+
+The application exposed sufficient client\-side information to identify
+its general framework and authentication architecture\. No vulnerability
+was assigned solely on the basis of technology or route disclosure\.
+
+---
+
+## Phase 2 — Authentication Flow Analysis
+
+The login process was inspected through the browser’s Network panel\.
+
+Authentication submissions generated requests containing the expected
+email and password fields\.
+
+Sanitized request structure:
+
+```json
+{
+  "email": "test@example.com",
+  "password": "<redacted>"
+}
+```
+
+Invalid credentials resulted in an HTTP `400` response containing an
+authentication error equivalent to:
+
+```json
+{
+  "code": "invalid_credentials",
+  "message": "Invalid login credentials"
+}
+```
+
+Additional invalid test credentials produced the same general response
+behavior\.
+
+### Assessment Result
+
+No authentication bypass was identified during this phase\.
+
+A password\-recovery workflow was not implemented in the tested version
+of the application and was therefore excluded from the current
+authentication testing\.
+
+---
+
+## Phase 3 — Administrative Route Discovery
+
+Reconnaissance identified the following administrative route:
+
+```text
+/admin
+```
+
+Direct browser navigation to this location did not display the
+administrative interface\. Instead, the application presented its
+authentication page while retaining the requested administrative
+destination:
+
+```text
+/login?next=/admin
+```
+
+The route was then examined independently from the browser\.
+
+```bash
+curl -sS -i https://TARGET/admin
+```
+
+The returned application content was saved for additional analysis:
+
+```bash
+curl -s https://TARGET/admin -o /tmp/admin.html
+```
+
+Relevant terms were extracted from the response:
+
+```bash
+grep -Eio 'dashboard|users|orders|payments|admin|login|sign.?in' /tmp/admin.html | sort -u
+```
+
+Observed terms included references to the administrative and login
+routes\.
+
+---
+
+## Phase 4 — Unauthenticated Administrative Access Validation
+
+The `/admin` response required additional analysis because receiving
+application content alone did not establish whether protected
+functionality was exposed\.
+
+Inspection of the returned Next\.js data identified redirect behavior
+containing:
+
+```text
+NEXT_REDIRECT
+/login?next=/admin
+307
+```
+
+This demonstrated that an unauthenticated request was being routed into
+the authentication workflow rather than being granted access to the
+protected administrative interface\.
+
+### Validation Result
+
+Control Tested                                               Result
+
+---
+
+Administrative route externally discoverable                 Yes
+`/admin` reachable without an existing session               Yes
+Administrative interface accessible without authentication   No
+Unauthenticated request redirected to login                  Yes
+Administrative authentication bypass confirmed               No
+
+### Security Disposition
+
+**No finding issued\.**
+
+The administrative route was discoverable, but testing did not
+demonstrate unauthorized access to administrative functionality or
+protected content\.
+
+---
+
+# Findings Status
+
+## Confirmed Security Findings
+
+**No confirmed vulnerabilities at the current stage of testing\.**
+
+This status reflects the evidence collected so far and may change as the
+assessment progresses\.
+
+## Attack Surface Observations
+
+---
+
+Observation                         Assessment Relevance
+
+---
+
+Next\.js identified                  Establishes framework for further
+testing
+
+Supabase authentication identified  Establishes authentication
+architecture
+
+`/admin` route identified           Provides administrative
+access\-control test target
+
+Invalid credentials rejected        Authentication control functioning
+in tested cases
+
+`/admin` redirects unauthenticated  Page\-level authentication control
+requests                            functioning
+
+## Password recovery unavailable       Not testable in current application build
+
+---
+
+# Evidence Summary
+
+Evidence collected during the assessment includes:
+
+- Login\-page network traffic
+- Invalid authentication responses
+- Supabase authentication request behavior
+- `/admin` browser behavior
+- Direct `/admin` HTTP responses
+- Next\.js redirect data
+- Command\-line response analysis
+
+Sensitive values such as passwords, authentication tokens, session
+identifiers, and secrets should be redacted before evidence is published
+in a public portfolio repository\.
+
+A recommended repository structure is:
+
+```text
+getjunoway-pentest/
+├── README.md
+├── CASE_STUDY.md
+├── evidence/
+│   ├── authentication/
+│   └── access-control/
+└── findings/
+```
+
+---
+
+# Next Assessment Phase
+
+Testing will continue beyond page\-level authentication controls to
+evaluate whether authorization is enforced by the underlying server\-side
+functionality\.
+
+The next assessment phase will focus on:
+
+- Session handling
+- Backend/API authorization
+- Authenticated versus unauthenticated resource access
+- Administrative functionality boundaries
+- Application route exposure
+- Input handling
+- Security configuration
+- Additional attack\-surface discovery
+
+Any confirmed vulnerability will be documented with reproduction
+evidence, impact analysis, severity, and remediation guidance\.
+
+---
+
+# Current Engagement Status
+
+The first assessment phase established the application’s authentication
+architecture and validated unauthenticated behavior of the discovered
+administrative route\.
+
+The application currently prevents the tested unauthenticated request
+from reaching the `/admin` interface and redirects the request into the
+login workflow\.
+
+**Current confirmed vulnerabilities: 0**
+
+**Assessment status: In progress**
