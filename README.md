@@ -77,3 +77,5 @@ Do not commit:
 • Screenshots containing sensitive information
 
 If sensitive data is accidentally committed, revoke the affected secret immediately and remove it from Git history before making the repository public.
+
+Copyright © 2026. All Rights Reserved.
