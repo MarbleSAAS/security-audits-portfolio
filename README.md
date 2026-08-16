@@ -21,11 +21,6 @@ Portfolio
 |-------------------------------------------------------------------------------------------------|-------------------------|-----------|
 |[001 — Black-Box Web Application Assessment](case-studies/001-black-box-web-assessment/README.md)|Authorized Web Assessment|In Progress|
 
-Sample Reports
-
-• HackerOne-style vulnerability report template
-• Professional finding template
-
 Methodology
 
 My testing process emphasizes reproducibility, minimal impact, clear evidence, and actionable remediation.
@@ -58,9 +53,9 @@ I do not publish undisclosed vulnerabilities, customer information, secrets, acc
 
 Contact
 
-• HackerOne: ADD_YOUR_HACKERONE_PROFILE
-• GitHub: ADD_YOUR_GITHUB_PROFILE
-• Email: ADD_PUBLIC_SECURITY_EMAIL
+• HackerOne: 
+• GitHub: MarbleSAAS
+• Email: runrtech@gmail.com
 
 ────────
 
